@@ -12,28 +12,28 @@ class ActorCritic_v2(nn.Module):
 
         # actor outputs two values representing y locations to perform crop
         self.actor_critic = nn.Sequential(
-            nn.Conv2d(in_channels=64, out_channels=32, kernel_size=3, padding=1),
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=1),
             nn.MaxPool2d(kernel_size=2),
-            nn.BatchNorm2d(num_features=32),
+            nn.BatchNorm2d(num_features=64),
             nn.LeakyReLU(negative_slope=0.1),
 
-            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, padding=1),
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=1),
             nn.MaxPool2d(kernel_size=2),
-            nn.BatchNorm2d(num_features=32),
+            nn.BatchNorm2d(num_features=64),
             nn.LeakyReLU(negative_slope=0.1),
 
-            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, padding=1),
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1),
             nn.MaxPool2d(kernel_size=2),
-            nn.BatchNorm2d(num_features=32),
+            nn.BatchNorm2d(num_features=128),
             nn.LeakyReLU(negative_slope=0.1),
 
-            nn.Conv2d(in_channels=32, out_channels=16, kernel_size=3, padding=1),
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1),
             nn.MaxPool2d(kernel_size=2),
-            nn.BatchNorm2d(num_features=16),
+            nn.BatchNorm2d(num_features=128),
             nn.LeakyReLU(negative_slope=0.1),
 
             # output straight away value, action1, action2
-            nn.Conv2d(in_channels=16, out_channels=3, kernel_size=1),
+            nn.Conv2d(in_channels=128, out_channels=3, kernel_size=1),
             nn.AvgPool2d(kernel_size=2),
             nn.Sigmoid(),
         )

@@ -81,7 +81,7 @@ precrop_set = Precrop_Loader(directory=DIRECTORY, number_of_images=700)
 precrop_loader = torch.utils.data.DataLoader(precrop_set, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
 
 # TRAIN
-for epoch in range(1000):
+for epoch in range(40000):
     # pass cropped images and truths to fastenet and actor critic to get value and actions and states
     # input is data and labels, output is actions and feature maps
     data, labels = iter(precrop_loader).next()
@@ -91,22 +91,22 @@ for epoch in range(1000):
 
     # pass feature map and actions to crop handler
     # input is feature maps, labels, actions and rewards, output is cropped feature maps, labels and predicted rewards
-    crop_set = Crop_Loader(fn_output_1.to('cpu'), labels, ac_output.to('cpu'))
+    crop_set = Crop_Loader(fn_output_1, labels, ac_output)
     crop_loader = torch.utils.data.DataLoader(crop_set, batch_size=fn_output_1.shape[0], shuffle=False, drop_last=True)
 
     # input is cropped feature maps, labels, and predicted rewards
     # output is true reward, predicted reward, loss
     cropped_F_map, labels, predicted_rewards, crop_width, saliency_mask = iter(crop_loader).next()
-    saliency_map = FasteNet.module_two(cropped_F_map.to(device)) * saliency_mask.to(device)
+    saliency_map = FasteNet.module_two(cropped_F_map) * saliency_mask.to(device)
 
     # calculate loss
     precision_loss = torch.sum(abs(saliency_map - labels.to(device)), (-1, -2)).squeeze()
-    computational_loss = crop_width.to(device)
+    computational_loss = crop_width
 
     # print(computational_loss)
     # print(precision_loss)
     # print(predicted_rewards)
-    loss = torch.sum(abs(predicted_rewards.to(device) - (precision_loss + computational_loss)) + predicted_rewards.to(device))
+    loss = torch.sum(abs(predicted_rewards - (precision_loss + computational_loss)) + predicted_rewards)
 
     # backprop
     loss.backward()
