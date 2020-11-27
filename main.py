@@ -100,7 +100,7 @@ for epoch in range(40000):
     saliency_map = FasteNet.module_two(cropped_F_map) * saliency_mask.to(device)
 
     # calculate loss
-    precision_loss = torch.sum(abs(saliency_map - labels.to(device)), (-1, -2)).squeeze()
+    precision_loss = 0.0025 * torch.sum(abs(saliency_map - labels.to(device)), (-1, -2)).squeeze()
     computational_loss = crop_width
 
     # print(computational_loss)
