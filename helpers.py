@@ -49,9 +49,9 @@ class helpers:
     def training_checkpoint(self, loss, iterations, epoch):
         self.running_loss += loss
 
-        if iterations % 500 == 0 and iterations != 0:
+        if iterations % 10 == 0 and iterations != 0:
             # at the moment, no way to evaluate the current state of training, so we just record the current running loss
-            self.lowest_running_loss = (self.running_loss.item() if (iterations == 500) else self.lowest_running_loss)
+            self.lowest_running_loss = (self.running_loss.item() if (iterations == 10) else self.lowest_running_loss)
             
             # print status
             print(f'Epoch {epoch}; Batch Number {iterations}; Running Loss {self.running_loss.item()}; Lowest Running Loss {self.lowest_running_loss}')
