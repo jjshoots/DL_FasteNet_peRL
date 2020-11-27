@@ -50,16 +50,14 @@ class Precrop_Loader(Dataset):
 
 
     def __len__(self):
-        return self.number_of_images * 100
+        return self.number_of_images
 
 
 
     # returns uncropped image and ground truth
-    def get_sample(self):
-        index = nprand.randint(0, self.number_of_images)
-
-        image_path = os.path.join(self.directory, f'Dataset/image/image_{index}.png')
-        truth_path = os.path.join(self.directory, f'Dataset/label/label_{index}.png')
+    def get_sample(self, idx):
+        image_path = os.path.join(self.directory, f'Dataset/image/image_{idx}.png')
+        truth_path = os.path.join(self.directory, f'Dataset/label/label_{idx}.png')
 
         # read images
         self.image = TF.to_tensor(cv2.imread(image_path))[0]
@@ -73,7 +71,8 @@ class Precrop_Loader(Dataset):
 
     # returns cropped image and ground truth
     def __getitem__(self, idx):
-        self.get_sample()
+        idx = np.random.randint(0, self.number_of_images)
+        self.get_sample(idx)
 
         # get the starting locations, unscaled and scaled
         self.start_location = nprand.randint(0, self.image.shape[0] - self.crop_height)

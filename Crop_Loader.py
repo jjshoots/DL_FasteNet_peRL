@@ -1,6 +1,7 @@
 import time
 import os
 import sys
+import pickle
 
 import cv2
 import numpy as np
@@ -18,34 +19,39 @@ from helpers import helpers
 # feature_quant = feature map downsampling ratio from raw image
 # crop_quant = output from fastenet downsampling ratio from raw image
 
-class Crop_Loader(Dataset):
-    def __init__(self, F_maps, labels, action_p_rewards):
+class Crop_Loader():
+    def __init__(self, dump_location, length):
         # general params
-        self.F_maps = F_maps
-        self.height = self.F_maps[0].shape[1]
-        self.action1 = action_p_rewards[..., 0]
-        self.action2 = action_p_rewards[..., 1]
-        
-        # straight pass through
-        self.labels = labels
-        self.predicted_rewards = action_p_rewards[..., 2]
+        self.dump_location = dump_location
+        self.length = length
+
+        self.height = 0
 
 
 
     def __len__(self):
-        return self.F_maps.shape[0]
+        return self.length
 
 
 
     # returns cropped image and ground truth
     def __getitem__(self, idx):
-        # select an image and get the height
-        crop_F_map = self.F_maps[idx]
+        # read from dump location
+        f = open(os.path.join(self.dump_location, f'example{idx}.pckl'), 'rb')
+        crop_F_map, labels, action_p_rewards = pickle.load(f)
+
+        # parse out action and values and get image height
+        action1 = action_p_rewards[..., 0]
+        action2 = action_p_rewards[..., 1]
+        predicted_rewards = action_p_rewards[..., 2]
+        self.height = crop_F_map.shape[1]
+
+        # create saliency mask
         saliency_mask = torch.ones(1, crop_F_map.shape[1], crop_F_map.shape[2])
 
         # get the crop limits
-        top_border = max(int((self.action1[idx] - 0.5 * self.action2[idx]) * self.height), 0)
-        bottom_border = min(int((self.action1[idx] + 0.5 * self.action2[idx]) * self.height), self.height)
+        top_border = max(int((action1 - 0.5 * action2) * self.height), 0)
+        bottom_border = min(int((action1 + 0.5 * action2) * self.height), self.height)
 
         # cropped feature map
         crop_F_map[:, :top_border, :] = 0
@@ -55,5 +61,5 @@ class Crop_Loader(Dataset):
         saliency_mask[:, :top_border, :] = 0
         saliency_mask[:, bottom_border:, :] = 0
 
-        return crop_F_map, self.labels[idx], self.predicted_rewards[idx], self.action2[idx], saliency_mask
+        return crop_F_map, labels, predicted_rewards, action2, saliency_mask
 
