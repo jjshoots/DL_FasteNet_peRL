@@ -27,7 +27,7 @@ DIRECTORY = 'C:\AI\DATA' # os.path.dirname(__file__)
 DIRECTORY2 = 'C:\AI\WEIGHTS'
 SHUTDOWN_AFTER_TRAINING = True
 NUMBER_OF_IMAGES = 700
-BATCH_SIZE = 35
+BATCH_SIZE = 20
 
 
 
@@ -81,61 +81,61 @@ precrop_set = Precrop_Loader(directory=DIRECTORY, number_of_images=700)
 precrop_loader = torch.utils.data.DataLoader(precrop_set, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
 
 # TRAIN
-for epoch in range(40000):
-    # pass cropped images and truths to fastenet and actor critic to get value and actions and states
-    # input is data and labels, output is actions and feature maps
-    data, labels = iter(precrop_loader).next()
-    fn_output_1 = FasteNet.module_one(data.to(device))
-    ac_input = F.adaptive_max_pool2d(fn_output_1[..., :32], 32)
-    ac_output = ActorCritic.forward(ac_input)
+for epoch in range(1000):
+    for iterations, (data, labels) in enumerate(precrop_loader):
+        # pass cropped images and truths to fastenet and actor critic to get value and actions and states
+        # input is data and labels, output is actions and feature maps
+        data, labels = iter(precrop_loader).next()
+        fn_output_1 = FasteNet.module_one(data.to(device))
+        ac_input = F.adaptive_max_pool2d(fn_output_1[..., :32], 32)
+        ac_output = ActorCritic.forward(ac_input)
 
-    # pass feature map and actions to crop handler
-    # input is feature maps, labels, actions and rewards, output is cropped feature maps, labels and predicted rewards
-    crop_set = Crop_Loader(fn_output_1, labels, ac_output)
-    crop_loader = torch.utils.data.DataLoader(crop_set, batch_size=fn_output_1.shape[0], shuffle=False, drop_last=True)
+        # pass feature map and actions to crop handler
+        # input is feature maps, labels, actions and rewards, output is cropped feature maps, labels and predicted rewards
+        crop_set = Crop_Loader(fn_output_1, labels, ac_output)
 
-    # input is cropped feature maps, labels, and predicted rewards
-    # output is true reward, predicted reward, loss
-    cropped_F_map, labels, predicted_rewards, crop_width, saliency_mask = iter(crop_loader).next()
-    saliency_map = FasteNet.module_two(cropped_F_map) * saliency_mask.to(device)
+        # input is cropped feature maps, labels, and predicted rewards
+        # output is true reward, predicted reward, loss
+        cropped_F_map, labels, predicted_rewards, crop_width, saliency_mask = crop_set.stack()
+        saliency_map = FasteNet.module_two(cropped_F_map) * saliency_mask.to(device)
 
-    # calculate loss
-    precision_loss = 0.0025 * torch.sum(abs(saliency_map - labels.to(device)), (-1, -2)).squeeze()
-    computational_loss = crop_width
+        # calculate loss
+        precision_loss = 0.0025 * torch.sum(abs(saliency_map - labels.to(device)), (-1, -2)).squeeze()
+        computational_loss = crop_width
 
-    # print(computational_loss)
-    # print(precision_loss)
-    # print(predicted_rewards)
-    loss = torch.sum(abs(predicted_rewards - (precision_loss + computational_loss)) + predicted_rewards)
+        # print(computational_loss)
+        # print(precision_loss)
+        # print(predicted_rewards)
+        loss = torch.sum(abs(predicted_rewards - (precision_loss + computational_loss)) + predicted_rewards)
 
-    # backprop
-    loss.backward()
-    optimizer.step()
+        # backprop
+        loss.backward()
+        optimizer.step()
 
-    # checkpoint our training
-    weights_file = ActorCritic_helper.training_checkpoint(loss=loss, iterations=epoch, epoch=None)
+        # checkpoint our training
+        weights_file = ActorCritic_helper.training_checkpoint(loss=loss, iterations=iterations, epoch=epoch)
 
-    if weights_file != -1:
-        torch.save(ActorCritic.state_dict(), weights_file)
+        if weights_file != -1:
+            torch.save(ActorCritic.state_dict(), weights_file)
 
 
-    if False:
+        if False:
 
-        figure = plt.figure()
+            figure = plt.figure()
 
-        figure.add_subplot(2, 2, 1)
-        plt.imshow(data[0].squeeze().to('cpu').numpy())
+            figure.add_subplot(2, 2, 1)
+            plt.imshow(data[0].squeeze().to('cpu').numpy())
 
-        figure.add_subplot(2, 2, 2)
-        plt.imshow(cropped_F_map[0][0].squeeze().to('cpu').numpy())
+            figure.add_subplot(2, 2, 2)
+            plt.imshow(cropped_F_map[0][0].squeeze().to('cpu').numpy())
 
-        figure.add_subplot(2, 2, 3)
-        plt.imshow(saliency_map[0].squeeze().to('cpu').numpy())
+            figure.add_subplot(2, 2, 3)
+            plt.imshow(saliency_map[0].squeeze().to('cpu').numpy())
 
-        figure.add_subplot(2, 2, 4)
-        plt.imshow(labels[0].squeeze().to('cpu').numpy())
+            figure.add_subplot(2, 2, 4)
+            plt.imshow(labels[0].squeeze().to('cpu').numpy())
 
-        plt.show()
+            plt.show()
 
 
 if SHUTDOWN_AFTER_TRAINING:

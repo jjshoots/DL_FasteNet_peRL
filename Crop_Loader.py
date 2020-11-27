@@ -32,13 +32,13 @@ class Crop_Loader(Dataset):
 
 
 
-    def __len__(self):
+    def len(self):
         return self.F_maps.shape[0]
 
 
 
     # returns cropped image and ground truth
-    def __getitem__(self, idx):
+    def getitem(self, idx):
         # select an image and get the height
         crop_F_map = self.F_maps[idx]
         saliency_mask = torch.ones(1, crop_F_map.shape[1], crop_F_map.shape[2])
@@ -55,5 +55,18 @@ class Crop_Loader(Dataset):
         saliency_mask[:, :top_border, :] = 0
         saliency_mask[:, bottom_border:, :] = 0
 
-        return crop_F_map, self.labels[idx], self.predicted_rewards[idx], self.action2[idx], saliency_mask
+        return crop_F_map, saliency_mask
 
+    def stack(self):
+        crop_F_maps = []
+        saliency_masks = []
+        
+        for idx in range(self.len()):
+            temp = self.getitem(idx)
+            crop_F_maps.append(temp[0])
+            saliency_masks.append(temp[1])
+
+        crop_F_maps = torch.stack(crop_F_maps)
+        saliency_masks = torch.stack(saliency_masks)
+
+        return crop_F_maps, self.labels, self.predicted_rewards, self.action2, saliency_masks

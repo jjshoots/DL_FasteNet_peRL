@@ -20,7 +20,7 @@ from helpers import helpers
 # crop_quant = output from fastenet downsampling ratio from raw image
 
 class Precrop_Loader(Dataset):
-    def __init__(self, directory, number_of_images, feature_map_quant=8, crop_quant=64, height_quant=6):
+    def __init__(self, directory, number_of_images, feature_map_quant=8, crop_quant=64, height_quant=8):
         # general params
         self.directory = directory
 
@@ -64,6 +64,20 @@ class Precrop_Loader(Dataset):
         # read images
         self.image = TF.to_tensor(cv2.imread(image_path))[0]
         self.truth = TF.to_tensor(cv2.imread(truth_path))[0]
+
+        # create blank space, space for images uses images of gravel
+        mean = self.image.mean()
+        variance = self.image.std()
+        # self.blank_noise = torch.randn([int(self.image.shape[0]), int(self.image.shape[1])]) * variance * mean
+        # self.blank_noise -= torch.min(self.blank_noise)
+        # self.blank_noise /= torch.max(self.blank_noise)
+        blank_noise = self.image[:int(self.image.shape[0]/4), :]
+        blank_space = torch.zeros([int(self.image.shape[0]/4), int(self.image.shape[1])])
+
+        # add blank space
+        self.image = torch.cat([blank_noise, self.image, blank_noise], dim=0)
+        self.truth = torch.cat([blank_space, self.truth, blank_space], dim=0)
+        # print(self.image.shape, self.truth.shape)
         
         # normalize inputs, 1e-6 for stability as some images don't have truth masks (no fasteners)
         self.image /= torch.max(self.image + 1e-6)
