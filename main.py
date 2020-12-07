@@ -68,7 +68,7 @@ ActorCritic_helper = helpers(mark_number=MARK_NUMBER, version_number=VERSION_NUM
 ActorCritic = ActorCritic_v2().to(device)
 
 # set up optimizer
-optimizer = optim.Adam(ActorCritic.parameters(), lr=1e-6, weight_decay=1e-2)
+optimizer = optim.Adam(ActorCritic.parameters(), lr=1e-5, weight_decay=1e-2)
 
 # get latest weight file
 weights_file = ActorCritic_helper.get_latest_weight_file()
@@ -97,7 +97,8 @@ for epoch in range(1000):
         # input is cropped feature maps, labels, and predicted rewards
         # output is true reward, predicted reward, loss
         cropped_F_map, labels, predicted_rewards, crop_width, saliency_mask = crop_set.stack()
-        saliency_map = FasteNet.module_two(cropped_F_map) * saliency_mask.to(device)
+        # saliency_map = FasteNet.module_two(cropped_F_map) * saliency_mask.to(device)
+        saliency_map = labels.to(device) * saliency_mask.to(device)
 
         # calculate loss
         precision_loss = 0.0025 * torch.sum(abs(saliency_map - labels.to(device)), (-1, -2)).squeeze()
@@ -120,7 +121,6 @@ for epoch in range(1000):
 
 
         if False:
-
             figure = plt.figure()
 
             figure.add_subplot(2, 2, 1)

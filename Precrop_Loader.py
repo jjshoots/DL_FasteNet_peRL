@@ -50,7 +50,7 @@ class Precrop_Loader(Dataset):
 
 
     def __len__(self):
-        return self.number_of_images * 100
+        return self.number_of_images * 10
 
 
 
