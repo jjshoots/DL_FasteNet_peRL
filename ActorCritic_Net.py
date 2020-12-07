@@ -16,6 +16,7 @@ class ActorCritic(nn.Module):
             device = torch.device('cuda:0')
 
         self.blank_slate = torch.ones([1, 1, 32, 32]).to(device)
+        self.blank_slate = torch.cat([self.blank_slate, self.blank_slate], dim=1)
 
         # actor outputs two values representing y locations to perform crop
         self.actor = nn.Sequential(
@@ -55,20 +56,17 @@ class ActorCritic(nn.Module):
 
     # get actor output
     def take_action(self, input):
-        return self.actor(input).view(-1)
+        return self.actor(input)
 
 
 
     # get estimated reward
     def estimate_reward(self, input, actions):
-        actions = actions.squeeze()
+        action_planes = self.blank_slate * actions
 
-        action1_plane = self.blank_slate * actions[0]
-        action2_plane = self.blank_slate * actions[1]
-
-        input = torch.cat((input, action1_plane, action2_plane), 1)
+        input = torch.cat((input, action_planes), 1)
         
-        return self.critic(input).view(-1)
+        return self.critic(input)
 
 
 

@@ -49,9 +49,9 @@ class helpers:
     def training_checkpoint(self, loss, iterations, epoch):
         self.running_loss += loss
 
-        if iterations % 500 == 0 and iterations != 0:
+        if iterations % 999 == 0 and iterations != 0:
             # at the moment, no way to evaluate the current state of training, so we just record the current running loss
-            self.lowest_running_loss = (self.running_loss.item() if (iterations == 500) else self.lowest_running_loss)
+            self.lowest_running_loss = (self.running_loss.item() if (iterations == 999) else self.lowest_running_loss)
             
             # print status
             print(f'Epoch {epoch}; Batch Number {iterations}; Running Loss {self.running_loss.item()}; Lowest Running Loss {self.lowest_running_loss}')
@@ -152,7 +152,7 @@ class helpers:
     @staticmethod
     def saliency_to_contour(input, original_image, fastener_area_threshold, input_output_ratio):
         # find contours in the image
-        threshold = input.detach().cpu().squeeze().numpy().astype(np.uint8)
+        threshold = (input.detach().cpu().squeeze().numpy() * 255).astype(np.uint8)
         contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         # filter contours below certain area

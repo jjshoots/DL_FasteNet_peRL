@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision.transforms.functional as TF
 
 from helpers import helpers
@@ -88,23 +89,29 @@ class Assistant():
 
 
     # crops image from cropped sample based on action values
-    def crop_feature_map(self, action1, action2, feature_map):
+    def crop_feature_map(self, action, feature_maps):
 
-        # we add 0.1 to action 2 to prevent the network from cropping 0
-        action2 += 0.1
+        action = action.squeeze()
+        
+        # we compute the computational loss directly using the action
+        self.computational_loss = abs(action[:, 1])
+        action[:, 1] = action[:, 1] + 0.1
+        
+        self.precision_loss = torch.zeros_like(action[:, 0])
+        self.cropped_feature_map = torch.zeros_like(feature_maps)
 
-        # calculate the width of the cropped feature map for use in loss function later
-        self.computational_loss = abs(action2)
+        for i, feature_map in enumerate(feature_maps):
+            # get crop start location (based on cropped image ground) based on action 1
+            self.crop_start_location = max(int((action[i, 0] - 0.5 * action[i, 1]) *  self.height_quant) * self.crop_quant, 0)
+            feature_map_start = int(self.crop_start_location / self.feature_map_quant)
 
-        # get crop start location (based on cropped image ground) based on action 1
-        self.crop_start_location = max(int((action1 - 0.5 * action2) *  self.height_quant) * self.crop_quant, 0)
-        feature_map_start = int(self.crop_start_location / self.feature_map_quant)
+            # get crop end location (based on cropped image ground) based on action 2
+            self.crop_end_location = min(int((action[i, 0] + 0.5 * action[i, 1]) * self.height_quant) * self.crop_quant, self.crop_height)
+            feature_map_end = int(self.crop_end_location / self.feature_map_quant)
 
-        # get crop end location (based on cropped image ground) based on action 2
-        self.crop_end_location = min(int((action1 + 0.5 * action2) * self.height_quant) * self.crop_quant, self.crop_height)
-        feature_map_end = int(self.crop_end_location / self.feature_map_quant)
-
-        self.cropped_feature_map = feature_map[..., feature_map_start:feature_map_end, :]
+            feature_map[..., :feature_map_start, :] = 0
+            feature_map[..., feature_map_end:, :] = 0
+            self.cropped_feature_map[i] = feature_map
 
         return self.cropped_feature_map
 
@@ -123,12 +130,13 @@ class Assistant():
 
 
     # calculates the loss based on the width of the crop and the accuracy of the net
-    def calculate_loss(self):
-        # calculate loss from cropping too much
-        # draw contours on original image and prediction image
-        _, contour_number = helpers.saliency_to_contour(input=torch.tensor(self.saliency_map).unsqueeze(0).unsqueeze(0), original_image=None, fastener_area_threshold=1, input_output_ratio=8)
-        _, ground_number = helpers.saliency_to_contour(input=self.cropped_truth.unsqueeze(0).unsqueeze(0) * 255, original_image=None, fastener_area_threshold=1, input_output_ratio=1)
-        self.precision_loss = abs(contour_number - ground_number)
+    def calculate_loss(self, saliency_maps, labels):
+        
+        for i, saliency_map in enumerate(saliency_maps):
+            _, contour_number = helpers.saliency_to_contour(input=saliency_map.unsqueeze(0), original_image=None, fastener_area_threshold=1, input_output_ratio=1)
+            _, ground_number = helpers.saliency_to_contour(input=F.max_pool2d(labels[i].unsqueeze(0), 8), original_image=None, fastener_area_threshold=1, input_output_ratio=1)
+            
+            self.precision_loss[i] = abs(contour_number - ground_number)
 
         # calculate total loss
         total_loss = self.precision_loss * 1. + self.computational_loss * 10.
