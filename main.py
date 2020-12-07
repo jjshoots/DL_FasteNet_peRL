@@ -83,9 +83,9 @@ Assistant = Assistant(directory=DIRECTORY, number_of_images=700)
 # precompute stuff
 variance_stack = (torch.ones(1, 2).to(device) * 0.3334)
 
-for epoch in range(10000):
+for epoch in range(1000):
     # generate data stacks
-    data_stack = [Assistant.get_cropped_sample() for _ in range(30)]
+    data_stack = [Assistant.get_cropped_sample() for _ in range(35)]
     image_stack = torch.stack([data_stack[0] for data_stack in data_stack]).to(device).unsqueeze(1)
     label_stack = torch.stack([data_stack[1] for data_stack in data_stack]).to(device).unsqueeze(1)
     
@@ -166,7 +166,7 @@ for epoch in range(10000):
         Critic_optimizer.step()
         
         # checkpoint our training
-        weights_file = ActorCritic_helper.training_checkpoint(loss=overall_loss, iterations=iteration, epoch=None)
+        weights_file = ActorCritic_helper.training_checkpoint(loss=overall_loss, iterations=iteration, epoch=epoch)
 
         if weights_file != -1:
             torch.save(ActorCritic.state_dict(), weights_file)

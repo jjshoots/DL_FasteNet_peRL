@@ -51,7 +51,7 @@ class helpers:
 
         if iterations % 999 == 0 and iterations != 0:
             # at the moment, no way to evaluate the current state of training, so we just record the current running loss
-            self.lowest_running_loss = (self.running_loss.item() if (iterations == 999) else self.lowest_running_loss)
+            self.lowest_running_loss = (self.running_loss.item() if (iterations == 999 and epoch == 0) else self.lowest_running_loss)
             
             # print status
             print(f'Epoch {epoch}; Batch Number {iterations}; Running Loss {self.running_loss.item()}; Lowest Running Loss {self.lowest_running_loss}')
@@ -63,7 +63,7 @@ class helpers:
 
 
             # save the network if the current running loss is lower than the one we have
-            if(self.running_loss.item() < self.lowest_running_loss) and iterations > 1:
+            if(self.running_loss.item() < self.lowest_running_loss and epoch > 0):
                 # save the net
                 self.lowest_running_loss = self.running_loss.item()
                 self.mark_number += 1

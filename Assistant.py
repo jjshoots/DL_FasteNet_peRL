@@ -139,7 +139,7 @@ class Assistant():
             self.precision_loss[i] = abs(contour_number - ground_number)
 
         # calculate total loss
-        total_loss = self.precision_loss * 1. + self.computational_loss * 10.
+        total_loss = self.precision_loss * 1. + self.computational_loss * 2.
 
         return total_loss
 
