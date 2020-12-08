@@ -83,7 +83,7 @@ Assistant = Assistant(directory=DIRECTORY, number_of_images=700)
 # precompute stuff
 variance_stack = (torch.ones(1, 2).to(device) * 0.3334)
 
-for epoch in range(1000):
+for epoch in range(3000):
     # generate data stacks
     data_stack = [Assistant.get_cropped_sample() for _ in range(35)]
     image_stack = torch.stack([data_stack[0] for data_stack in data_stack]).to(device).unsqueeze(1)
@@ -99,10 +99,7 @@ for epoch in range(1000):
     # generate log probabilities of the actions, in theory they should all be constants
     dist_stack = Normal(action_stack.squeeze(), variance_stack.squeeze())
     logprobs_stack = dist_stack.log_prob(dist_stack.mean).exp()
-    
-    # get estimated values from critic
-    estimated_value_stack = ActorCritic.estimate_reward(feature_map_reshaped, action_stack).squeeze().detach()
-    
+
     # mask off pixels on feature_map_stack
     masked_feature_map = Assistant.crop_feature_map(action_stack, feature_map_stack)
     
@@ -110,37 +107,53 @@ for epoch in range(1000):
     saliency_stack = FasteNet.module_two(masked_feature_map)
     
     # compute the true value by passing saliency map to the contour finding algorithm
-    true_value_stack = Assistant.calculate_loss(saliency_stack, label_stack).detach()
+    true_value_stack = Assistant.calculate_loss(saliency_stack, label_stack)
 
-    # gather advantages
-    advantage_stack = (true_value_stack - estimated_value_stack).unsqueeze(-1)
+    # checkpoint our training
+    weights_file = ActorCritic_helper.training_checkpoint(loss=torch.sum(true_value_stack), iterations=999, epoch=epoch)
+    if weights_file != -1:
+        torch.save(ActorCritic.state_dict(), weights_file)
+
+    # normalize the true values
+    true_value_stack = ((true_value_stack - true_value_stack.mean()) / torch.std(true_value_stack)).detach()
+
+
 
     # set to true to visualize
-    if False:
+    if True:
         figure = plt.figure()
 
-        figure.add_subplot(3, 1, 1)
-        plt.imshow(image_stack[0].squeeze().to('cpu').numpy())
+        figure.add_subplot(5, 1, 1)
+        plt.imshow(image_stack[-1].squeeze().to('cpu').numpy())
 
-        figure.add_subplot(3, 1, 2)
-        filter_view = feature_map_reshaped[0, 0, :].contiguous().view(32, -1)
+        figure.add_subplot(5, 1, 2)
+        filter_view = feature_map_reshaped[-1, 0, :].contiguous().view(32, -1)
         plt.imshow(filter_view.to('cpu').numpy())
 
-        figure.add_subplot(3, 1, 3)
-        plt.imshow(saliency_stack[0].squeeze().to('cpu').numpy())
-        plt.title(f'Miscounts: {Assistant.precision_loss}')
-        plt.axhline(y=Assistant.crop_start_location/8,color='red')
-        plt.axhline(y=Assistant.crop_end_location/8,color='red')
+        figure.add_subplot(5, 1, 3)
+        plt.imshow(saliency_stack[-1].squeeze().to('cpu').numpy())
+        plt.title(f'Miscounts: {Assistant.precision_loss[-1]}')
+        plt.axhline(y=Assistant.feature_map_start,color='red')
+        plt.axhline(y=Assistant.feature_map_end,color='red')
+
+        figure.add_subplot(5, 1, 4)
+        plt.imshow(masked_feature_map[-1, 0, :].squeeze().to('cpu').numpy())
+        plt.axhline(y=Assistant.feature_map_start,color='red')
+        plt.axhline(y=Assistant.feature_map_end,color='red')
+
 
         plt.show()
 
-    for iteration in range(1000):
+    for iteration in range(10):
         # pass feature maps into actor module to get new actions
         new_action_stack = ActorCritic.take_action(feature_map_reshaped)
 
         # get estimated values from critic
         estimated_value_stack = ActorCritic.estimate_reward(feature_map_reshaped, new_action_stack).squeeze()
         
+        # gather advantages
+        advantage_stack = (true_value_stack - estimated_value_stack).unsqueeze(-1)
+
         # get new log probs based on actions
         new_dist_stack = Normal(new_action_stack.squeeze(), variance_stack.squeeze())
         new_logprobs_stack = new_dist_stack.log_prob(action_stack.squeeze())
@@ -164,12 +177,6 @@ for epoch in range(1000):
         overall_loss.backward()
         Actor_optimizer.step()
         Critic_optimizer.step()
-        
-        # checkpoint our training
-        weights_file = ActorCritic_helper.training_checkpoint(loss=overall_loss, iterations=iteration, epoch=epoch)
-
-        if weights_file != -1:
-            torch.save(ActorCritic.state_dict(), weights_file)
 
     data_stack            = None
     image_stack           = None
@@ -183,7 +190,6 @@ for epoch in range(1000):
     masked_feature_map    = None
     saliency_stack        = None
     true_value_stack      = None
-    advantage_stack       = None
 
 if SHUTDOWN_AFTER_TRAINING:
     os.system("shutdown /s /t 30")

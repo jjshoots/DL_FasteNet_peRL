@@ -63,7 +63,7 @@ class helpers:
 
 
             # save the network if the current running loss is lower than the one we have
-            if(self.running_loss.item() < self.lowest_running_loss and epoch > 0):
+            if(self.running_loss.item() < self.lowest_running_loss and epoch > 0) or (epoch % 50 == 0):
                 # save the net
                 self.lowest_running_loss = self.running_loss.item()
                 self.mark_number += 1

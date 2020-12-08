@@ -38,6 +38,8 @@ class Assistant():
 
         self.crop_start_location = 0
         self.crop_end_location = 0
+        self.feature_map_start = 0
+        self.feature_map_end = 0
 
         # raw images
         self.image = []
@@ -103,14 +105,14 @@ class Assistant():
         for i, feature_map in enumerate(feature_maps):
             # get crop start location (based on cropped image ground) based on action 1
             self.crop_start_location = max(int((action[i, 0] - 0.5 * action[i, 1]) *  self.height_quant) * self.crop_quant, 0)
-            feature_map_start = int(self.crop_start_location / self.feature_map_quant)
+            self.feature_map_start = int(self.crop_start_location / self.feature_map_quant)
 
             # get crop end location (based on cropped image ground) based on action 2
             self.crop_end_location = min(int((action[i, 0] + 0.5 * action[i, 1]) * self.height_quant) * self.crop_quant, self.crop_height)
-            feature_map_end = int(self.crop_end_location / self.feature_map_quant)
+            self.feature_map_end = int(self.crop_end_location / self.feature_map_quant)
 
-            feature_map[..., :feature_map_start, :] = 0
-            feature_map[..., feature_map_end:, :] = 0
+            feature_map[..., :self.feature_map_start, :] = 0
+            feature_map[..., self.feature_map_end:, :] = 0
             self.cropped_feature_map[i] = feature_map
 
         return self.cropped_feature_map

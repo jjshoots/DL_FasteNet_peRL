@@ -21,35 +21,34 @@ class ActorCritic(nn.Module):
         # actor outputs two values representing y locations to perform crop
         self.actor = nn.Sequential(
             nn.Conv2d(in_channels=64, out_channels=8, kernel_size=3, padding=1),
-            nn.MaxPool2d(kernel_size=4),
+            nn.AvgPool2d(kernel_size=4),
             nn.BatchNorm2d(num_features=8),
             nn.LeakyReLU(negative_slope=0.1),
 
             nn.Conv2d(in_channels=8, out_channels=4, kernel_size=3, padding=1),
-            nn.MaxPool2d(kernel_size=4),
+            nn.AvgPool2d(kernel_size=4),
             nn.BatchNorm2d(num_features=4),
             nn.LeakyReLU(negative_slope=0.1),
 
             nn.Conv2d(in_channels=4, out_channels=2, kernel_size=1),
-            nn.MaxPool2d(kernel_size=2),
+            nn.AvgPool2d(kernel_size=2),
             nn.Sigmoid(),
         )
 
         # actor outputs an estimated loss function based on the critic actions
         self.critic = nn.Sequential(
             nn.Conv2d(in_channels=66, out_channels=8, kernel_size=3, padding=1),
-            nn.MaxPool2d(kernel_size=4),
+            nn.AvgPool2d(kernel_size=4),
             nn.BatchNorm2d(num_features=8),
             nn.LeakyReLU(negative_slope=0.1),
 
             nn.Conv2d(in_channels=8, out_channels=4, kernel_size=3, padding=1),
-            nn.MaxPool2d(kernel_size=4),
+            nn.AvgPool2d(kernel_size=4),
             nn.BatchNorm2d(num_features=4),
             nn.LeakyReLU(negative_slope=0.1),
 
             nn.Conv2d(in_channels=4, out_channels=1, kernel_size=1),
-            nn.AvgPool2d(kernel_size=2),
-            nn.LeakyReLU(negative_slope=0.1),
+            nn.AvgPool2d(kernel_size=2)
         )
 
 
