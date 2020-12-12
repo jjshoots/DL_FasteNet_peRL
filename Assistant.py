@@ -16,7 +16,7 @@ from helpers import helpers
 
 # calculates loss, handles image cropping
 # feature_quant = feature map downsampling ratio from raw image
-# crop_quant = output from fastenet downsampling ratio from raw image
+# crop_quant = absolute output from fastenet downsampling ratio from raw image
 
 class Assistant():
     def __init__(self, directory, number_of_images, feature_map_quant=8, crop_quant=64, height_quant=6):

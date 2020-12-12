@@ -83,7 +83,7 @@ Assistant = Assistant(directory=DIRECTORY, number_of_images=700)
 # precompute stuff
 variance_stack = (torch.ones(1, 2).to(device) * 0.3334)
 
-for epoch in range(3000):
+for epoch in range(10000):
     # generate data stacks
     data_stack = [Assistant.get_cropped_sample() for _ in range(35)]
     image_stack = torch.stack([data_stack[0] for data_stack in data_stack]).to(device).unsqueeze(1)
@@ -91,7 +91,7 @@ for epoch in range(3000):
     
     # pass image stack into FasteNet to generate stack of feature maps
     feature_map_stack = FasteNet.module_one(image_stack)
-    feature_map_reshaped = F.adaptive_max_pool2d(feature_map_stack, 32).detach()
+    feature_map_reshaped = F.adaptive_max_pool2d(feature_map_stack, 16).detach()
     
     # pass feature maps into actor module to get actions distributions and log probabilties
     action_stack = ActorCritic.take_action(feature_map_reshaped).detach()
@@ -117,17 +117,15 @@ for epoch in range(3000):
     # normalize the true values
     true_value_stack = ((true_value_stack - true_value_stack.mean()) / torch.std(true_value_stack)).detach()
 
-
-
     # set to true to visualize
-    if True:
+    if False:
         figure = plt.figure()
 
         figure.add_subplot(5, 1, 1)
         plt.imshow(image_stack[-1].squeeze().to('cpu').numpy())
 
         figure.add_subplot(5, 1, 2)
-        filter_view = feature_map_reshaped[-1, 0, :].contiguous().view(32, -1)
+        filter_view = feature_map_reshaped[-1, 5, :].contiguous()
         plt.imshow(filter_view.to('cpu').numpy())
 
         figure.add_subplot(5, 1, 3)
@@ -144,7 +142,7 @@ for epoch in range(3000):
 
         plt.show()
 
-    for iteration in range(10):
+    for iteration in range(100):
         # pass feature maps into actor module to get new actions
         new_action_stack = ActorCritic.take_action(feature_map_reshaped)
 
@@ -152,7 +150,7 @@ for epoch in range(3000):
         estimated_value_stack = ActorCritic.estimate_reward(feature_map_reshaped, new_action_stack).squeeze()
         
         # gather advantages
-        advantage_stack = (true_value_stack - estimated_value_stack).unsqueeze(-1)
+        advantage_stack = -(true_value_stack - estimated_value_stack).unsqueeze(-1)
 
         # get new log probs based on actions
         new_dist_stack = Normal(new_action_stack.squeeze(), variance_stack.squeeze())
@@ -165,7 +163,7 @@ for epoch in range(3000):
         surrogate2 = torch.sum(torch.clamp(ratio, 0.8, 1.2) * advantage_stack, dim=1)
 
         # distribute losses
-        actor_loss = torch.min(surrogate1, surrogate2).mean()
+        actor_loss = -torch.min(surrogate1, surrogate2).mean()
         critic_loss = (true_value_stack - estimated_value_stack).pow(2).mean()
 
         # sum losses

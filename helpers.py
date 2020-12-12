@@ -26,6 +26,7 @@ class helpers:
         self.mark_number = mark_number
         self.version_number = version_number
         self.weights_file = os.path.join(self.weights_location, f'weights/Version{self.version_number}/weights{self.mark_number}.pth')
+        self.last_saved_epoch = 0
 
         # home directory
         self.directory = os.path.dirname(__file__)
@@ -61,9 +62,22 @@ class helpers:
             f.write(f'{epoch}, {iterations}, {self.running_loss.item()}, {self.lowest_running_loss}, {self.mark_number} \n')
             f.close()
 
+            # save the current weights to an intermediary file if we haven't saved in the last 200 epochs
+            # we save it as an intermediary file to prevent messing with the so far best weights file
+            if epoch - self.last_saved_epoch >= 200 and epoch > 0:
+                # record the last time we saved a file
+                self.last_saved_epoch = epoch
+
+                # save the weights file
+                self.weights_file = os.path.join(self.weights_location, f'weights/Version{self.version_number}/weights_intermediary{self.mark_number}.pth')
+                print(F"Passed 200 files without saving so far, saving weights to: {self.weights_file}")
+                return self.weights_file
 
             # save the network if the current running loss is lower than the one we have
-            if(self.running_loss.item() < self.lowest_running_loss and epoch > 0) or (epoch % 50 == 0):
+            if self.running_loss.item() < self.lowest_running_loss and epoch > 0:
+                # record the last time we saved a file
+                self.last_saved_epoch = epoch
+                
                 # save the net
                 self.lowest_running_loss = self.running_loss.item()
                 self.mark_number += 1
@@ -107,7 +121,6 @@ class helpers:
         else:
             print(F"No weights file found, generating new one during training.")
             return -1
-
 
 
 #################################################################################################
